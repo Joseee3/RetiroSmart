@@ -166,7 +166,6 @@ function App() {
 
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear] = useState(today.getFullYear())
-
   const [selectedDays, setSelectedDays] = useState<string[]>([])
   const [initialBalance, setInitialBalance] = useState('')
   const [dailyEarning, setDailyEarning] = useState('80')
@@ -244,14 +243,18 @@ function App() {
     const reserved = conservative
       ? Math.min(keys.length, countReservedDays(keys))
       : 0
+
     return Math.max(0, keys.length - reserved)
   }
 
-  // Las ganancias entre fechas de retiro se suman al saldo restante.
   const projections = useMemo(() => {
     const result: Projection[] = []
     let balance = startingBalance
-    let previousDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    let previousDate = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    )
 
     for (const date of upcomingWithdrawals) {
       const daysSincePrevious = eligibleDays.filter(
@@ -268,14 +271,20 @@ function App() {
       const extraWeekDays = eligibleDays.filter(
         (key) => key > makeKey(date) && key <= makeKey(extraWeekEnd),
       )
+
       const balanceAfterExtraWeek =
         remaining + earning * countEffectiveDays(extraWeekDays)
+
       const nextGoal =
         withdrawalOptions.find(
-          (option) => option > withdrawal && option <= balanceAfterExtraWeek,
+          (option) =>
+            option > withdrawal && option <= balanceAfterExtraWeek,
         ) ?? null
 
-      const cumulativeKeys = eligibleDays.filter((key) => key <= makeKey(date))
+      const cumulativeKeys = eligibleDays.filter(
+        (key) => key <= makeKey(date),
+      )
+
       const reservedDays = conservative
         ? Math.min(cumulativeKeys.length, countReservedDays(cumulativeKeys))
         : 0
@@ -302,7 +311,6 @@ function App() {
     startingBalance,
     earning,
     conservative,
-    selectedDays,
     eligibleDays,
     upcomingWithdrawals,
   ])
@@ -338,9 +346,11 @@ function App() {
       ...previous,
       { date: holidayDate, name, type: 'custom' },
     ])
+
     setSelectedDays((previous) =>
       previous.filter((key) => key !== holidayDate),
     )
+
     setHolidayName('')
     setHolidayDate('')
     setShowHolidayForm(false)
@@ -377,19 +387,6 @@ function App() {
     }
   }
 
-  function calculatorOperator(operator: string) {
-    const current = Number(calcDisplay)
-    if (calcOperator && calcStored !== null && !calcNewNumber) {
-      const next = calculate(calcStored, current, calcOperator)
-      setCalcStored(next)
-      setCalcDisplay(String(next))
-    } else {
-      setCalcStored(current)
-    }
-    setCalcOperator(operator)
-    setCalcNewNumber(true)
-  }
-
   function calculate(a: number, b: number, operator: string) {
     if (operator === '+') return a + b
     if (operator === '−') return a - b
@@ -398,9 +395,30 @@ function App() {
     return b
   }
 
+  function calculatorOperator(operator: string) {
+    const current = Number(calcDisplay)
+
+    if (calcOperator && calcStored !== null && !calcNewNumber) {
+      const next = calculate(calcStored, current, calcOperator)
+      setCalcStored(next)
+      setCalcDisplay(String(next))
+    } else {
+      setCalcStored(current)
+    }
+
+    setCalcOperator(operator)
+    setCalcNewNumber(true)
+  }
+
   function calculatorEquals() {
     if (calcStored === null || !calcOperator) return
-    const result = calculate(calcStored, Number(calcDisplay), calcOperator)
+
+    const result = calculate(
+      calcStored,
+      Number(calcDisplay),
+      calcOperator,
+    )
+
     setCalcDisplay(Number.isFinite(result) ? String(result) : 'Error')
     setCalcStored(null)
     setCalcOperator(null)
@@ -415,37 +433,46 @@ function App() {
   }
 
   function calculatorPercent() {
-    const value = Number(calcDisplay) / 100
-    setCalcDisplay(String(value))
+    setCalcDisplay(String(Number(calcDisplay) / 100))
     setCalcNewNumber(true)
   }
 
   const monthHolidays = holidays
     .filter((holiday) =>
-      holiday.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}-`),
+      holiday.date.startsWith(
+        `${year}-${String(month + 1).padStart(2, '0')}-`,
+      ),
     )
     .sort((a, b) => a.date.localeCompare(b.date))
+
+  const nextProjection = projections[0]
 
   return (
     <main className="app">
       <header className="topbar">
         <a className="brand" href="#">
           <span className="brand-icon">R</span>
-          <span>Retiro<span className="brand-accent">Smart</span></span>
+          <span>
+            Retiro<span className="brand-accent">Smart</span>
+          </span>
         </a>
+
         <span className="today-label">
           {today.toLocaleDateString('es-PE', {
-            weekday: 'short', day: 'numeric', month: 'short',
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
           })}
         </span>
       </header>
 
       <section className="welcome">
-        <div>
+        <div className="welcome-content">
           <p className="eyebrow">TU PLANIFICADOR FINANCIERO</p>
-          <h1>Planifica tus ganancias.</h1>
+          <h1>Planifica tus próximos retiros</h1>
           <p className="subtitle">
-            Organiza tus jornadas, contempla imprevistos y planifica tus retiros.
+            Organiza tus jornadas, contempla imprevistos y conoce
+            cuánto podrías retirar en tus próximas fechas.
           </p>
         </div>
         <div className="welcome-icon" aria-hidden="true">↗</div>
@@ -456,7 +483,7 @@ function App() {
           <p className="eyebrow">CONFIGURACIÓN FINANCIERA</p>
           <h2>Tu saldo y tus ganancias</h2>
           <p className="subtitle">
-            Introduce tu saldo actual cada vez que abras la aplicación.
+            Introduce tu saldo actual para calcular tus proyecciones.
           </p>
 
           <div className="finance-fields">
@@ -471,6 +498,7 @@ function App() {
                 onChange={(event) => setInitialBalance(event.target.value)}
               />
             </label>
+
             <label>
               Ganancia diaria (S/)
               <input
@@ -493,7 +521,9 @@ function App() {
             <span className="conservative-radio" aria-hidden="true" />
             <span className="toggle-copy">
               <strong>Escenario conservador</strong>
-              <small>Reservar una jornada por cada semana con días seleccionados.</small>
+              <small>
+                Reservar una jornada por cada semana con días seleccionados.
+              </small>
             </span>
           </label>
         </article>
@@ -503,33 +533,150 @@ function App() {
             <span>Saldo proyectado</span>
             <span className="balance-arrow" aria-hidden="true">↗</span>
           </div>
-          <strong className="balance-number">{money(projectedBalance)}</strong>
+
+          <strong className="balance-number">
+            {money(projectedBalance)}
+          </strong>
+
           <p>Estimación según los días de trabajo seleccionados.</p>
+
           <div className="balance-divider" />
+
           <div className="balance-stats">
-            <div><span>Días seleccionados</span><strong>{eligibleDays.length}</strong></div>
-            <div><span>Días de reserva</span><strong>{generalReservedDays}</strong></div>
+            <div>
+              <span>Días seleccionados</span>
+              <strong>{eligibleDays.length}</strong>
+            </div>
+            <div>
+              <span>Días de reserva</span>
+              <strong>{generalReservedDays}</strong>
+            </div>
           </div>
         </article>
       </section>
 
-      <section className="calendar-card">
+      {/* Recomendación principal */}
+      <section className="recommendation-card">
+        <div className="recommendation-top">
+          <div>
+            <p className="eyebrow">RESUMEN DE TU PLAN</p>
+            <h2>Tu próximo retiro</h2>
+          </div>
+          <span className="recommendation-icon" aria-hidden="true">S/</span>
+        </div>
+
+        {initialBalance.trim() === '' ? (
+          <p className="recommendation-message">
+            Introduce tu saldo actual para comenzar a calcular tu próximo retiro.
+          </p>
+        ) : eligibleDays.length === 0 ? (
+          <p className="recommendation-message">
+            Selecciona tus días de trabajo en el calendario para obtener
+            una proyección más personalizada.
+          </p>
+        ) : nextProjection ? (
+          <>
+            <p className="recommendation-date">
+              Próxima fecha prevista:{' '}
+              <strong>
+                {nextProjection.date.toLocaleDateString('es-PE', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </strong>
+            </p>
+
+            <div className="recommendation-metrics">
+              <div className="recommendation-metric">
+                <span>Saldo antes del retiro</span>
+                <strong>{money(nextProjection.balanceBefore)}</strong>
+              </div>
+
+              <div className="recommendation-metric">
+                <span>Retiro simulado</span>
+                <strong>
+                  {nextProjection.withdrawal > 0
+                    ? money(nextProjection.withdrawal)
+                    : 'Aún no disponible'}
+                </strong>
+              </div>
+
+              <div className="recommendation-metric">
+                <span>Saldo restante</span>
+                <strong>{money(nextProjection.remaining)}</strong>
+              </div>
+            </div>
+
+            <p className="recommendation-note">
+              {nextProjection.withdrawal > 0
+                ? 'La simulación utiliza la meta de retiro más alta que alcanza tu saldo estimado.'
+                : 'Tu saldo estimado todavía no alcanza la meta mínima de S/ 100.'}
+              {' '}Los resultados dependen de los días y ganancias que registres.
+            </p>
+          </>
+        ) : (
+          <p className="recommendation-message">
+            No hay fechas de retiro disponibles para calcular.
+          </p>
+        )}
+
+        <button
+          type="button"
+          className="recommendation-button"
+          onClick={() =>
+            document.getElementById('planificacion')?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            })
+          }
+        >
+          Ver calendario y planificación
+          <span aria-hidden="true"> ↓</span>
+        </button>
+      </section>
+
+      <section className="calendar-card" id="planificacion">
         <div className="calendar-header">
           <div>
             <p className="eyebrow">PLANIFICACIÓN</p>
             <h2>Calendario de trabajo</h2>
-            <p className="subtitle">Azul: hoy · Verde: trabajo · Rojo: feriado · Naranja: retiro.</p>
+            <p className="subtitle">
+              Azul: hoy · Verde: trabajo · Rojo: feriado · Naranja: retiro.
+            </p>
           </div>
+
           <div className="month-controls">
-            <button className="nav-button" onClick={() => changeMonth(-1)} aria-label="Mes anterior" type="button">‹</button>
+            <button
+              className="nav-button"
+              onClick={() => changeMonth(-1)}
+              aria-label="Mes anterior"
+              type="button"
+            >
+              ‹
+            </button>
             <strong>{monthNames[month]} {year}</strong>
-            <button className="nav-button" onClick={() => changeMonth(1)} aria-label="Mes siguiente" type="button">›</button>
+            <button
+              className="nav-button"
+              onClick={() => changeMonth(1)}
+              aria-label="Mes siguiente"
+              type="button"
+            >
+              ›
+            </button>
           </div>
         </div>
 
         <div className="calendar-grid">
-          {weekDays.map((day) => <div className="weekday" key={day}>{day}</div>)}
-          {Array.from({ length: firstDay }, (_, index) => <div className="empty-day" key={`empty-${index}`} />)}
+          {weekDays.map((day) => (
+            <div className="weekday" key={day}>{day}</div>
+          ))}
+
+          {Array.from({ length: firstDay }, (_, index) => (
+            <div className="empty-day" key={`empty-${index}`} />
+          ))}
+
           {Array.from({ length: daysInMonth }, (_, index) => {
             const day = index + 1
             const key = dateKey(year, month, day)
@@ -555,8 +702,19 @@ function App() {
                 className={classes}
                 onClick={() => toggleDay(day)}
                 disabled={Boolean(holiday) || isPast}
-                title={holiday?.name ?? (isToday ? 'Hoy' : isWithdrawal ? 'Fecha de retiro' : isPast ? 'Fecha pasada' : 'Seleccionar día de trabajo')}
-                aria-label={`${day} de ${monthNames[month]}${holiday ? `, feriado: ${holiday.name}` : ''}${isToday ? ', hoy' : ''}`}
+                title={
+                  holiday?.name ??
+                  (isToday
+                    ? 'Hoy'
+                    : isWithdrawal
+                      ? 'Fecha de retiro'
+                      : isPast
+                        ? 'Fecha pasada'
+                        : 'Seleccionar día de trabajo')
+                }
+                aria-label={`${day} de ${monthNames[month]}${
+                  holiday ? `, feriado: ${holiday.name}` : ''
+                }${isToday ? ', hoy' : ''}`}
                 aria-pressed={isSelected}
               >
                 <span>{day}</span>
@@ -577,10 +735,19 @@ function App() {
 
         <div className="calendar-footer">
           <div>
-            <strong>{selectedThisMonth} días seleccionados en {monthNames[month].toLowerCase()}</strong>
+            <strong>
+              {selectedThisMonth} días seleccionados en {monthNames[month].toLowerCase()}
+            </strong>
             <p>Los feriados y las fechas pasadas no se pueden seleccionar.</p>
           </div>
-          <button className="secondary-button" onClick={clearCurrentMonth} type="button">Limpiar mes</button>
+
+          <button
+            className="secondary-button"
+            onClick={clearCurrentMonth}
+            type="button"
+          >
+            Limpiar mes
+          </button>
         </div>
       </section>
 
@@ -591,18 +758,26 @@ function App() {
               <p className="eyebrow">CALENDARIO OFICIAL Y PERSONAL</p>
               <h2>Feriados de {monthNames[month]}</h2>
             </div>
+
             <button
               className={`add-holiday-button ${showHolidayForm ? 'is-open' : ''}`}
               type="button"
               onClick={() => setShowHolidayForm((visible) => !visible)}
-              aria-label={showHolidayForm ? 'Cerrar formulario de feriado' : 'Agregar un feriado'}
+              aria-label={
+                showHolidayForm
+                  ? 'Cerrar formulario de feriado'
+                  : 'Agregar un feriado'
+              }
               aria-expanded={showHolidayForm}
               title={showHolidayForm ? 'Cerrar' : 'Agregar feriado'}
             >
               {showHolidayForm ? '×' : '+'}
             </button>
           </div>
-          <p className="subtitle">Los días rojos se excluyen de las ganancias proyectadas.</p>
+
+          <p className="subtitle">
+            Los días rojos se excluyen de las ganancias proyectadas.
+          </p>
 
           {showHolidayForm && (
             <form className="holiday-form" onSubmit={addCustomHoliday}>
@@ -610,32 +785,71 @@ function App() {
                 <strong>Agregar fecha personalizada</strong>
                 <span>Se guardará en este navegador.</span>
               </div>
+
               <label>
                 Nombre del evento
-                <input value={holidayName} onChange={(event) => setHolidayName(event.target.value)} placeholder="Ej. Día no laborable" required />
+                <input
+                  value={holidayName}
+                  onChange={(event) => setHolidayName(event.target.value)}
+                  placeholder="Ej. Día no laborable"
+                  required
+                />
               </label>
+
               <label>
                 Fecha
-                <input type="date" value={holidayDate} onChange={(event) => setHolidayDate(event.target.value)} required />
+                <input
+                  type="date"
+                  value={holidayDate}
+                  onChange={(event) => setHolidayDate(event.target.value)}
+                  required
+                />
               </label>
+
               <div className="holiday-form-actions">
-                <button className="secondary-button" type="button" onClick={() => setShowHolidayForm(false)}>Cancelar</button>
-                <button className="primary-button" type="submit">Guardar feriado</button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => setShowHolidayForm(false)}
+                >
+                  Cancelar
+                </button>
+                <button className="primary-button" type="submit">
+                  Guardar feriado
+                </button>
               </div>
             </form>
           )}
 
           {monthHolidays.length === 0 ? (
-            <p className="empty-holidays">No hay feriados registrados para este mes.</p>
+            <p className="empty-holidays">
+              No hay feriados registrados para este mes.
+            </p>
           ) : (
             <div className="holiday-list">
               {monthHolidays.map((holiday) => (
-                <div className="holiday-row" key={`${holiday.date}-${holiday.name}`}>
-                  <span className="holiday-date">{formatHolidayDate(holiday.date)}</span>
+                <div
+                  className="holiday-row"
+                  key={`${holiday.date}-${holiday.name}`}
+                >
+                  <span className="holiday-date">
+                    {formatHolidayDate(holiday.date)}
+                  </span>
                   <span className="holiday-name">{holiday.name}</span>
+
                   {holiday.type === 'custom' ? (
-                    <button className="remove-holiday" onClick={() => removeCustomHoliday(holiday.date)} aria-label={`Eliminar feriado ${holiday.name}`} title="Eliminar feriado" type="button">×</button>
-                  ) : <span className="national-tag">Nacional</span>}
+                    <button
+                      className="remove-holiday"
+                      onClick={() => removeCustomHoliday(holiday.date)}
+                      aria-label={`Eliminar feriado ${holiday.name}`}
+                      title="Eliminar feriado"
+                      type="button"
+                    >
+                      ×
+                    </button>
+                  ) : (
+                    <span className="national-tag">Nacional</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -648,15 +862,22 @@ function App() {
           <div>
             <p className="eyebrow">TUS PRÓXIMAS METAS</p>
             <h2>Proyección de retiros</h2>
-            <p className="subtitle">Simulación orientativa de retiros y saldo restante.</p>
+            <p className="subtitle">
+              Simulación orientativa de retiros y saldo restante.
+            </p>
           </div>
-          <span className="projection-heading-badge">{projections.length} próximos retiros</span>
+          <span className="projection-heading-badge">
+            {projections.length} próximos retiros
+          </span>
         </div>
 
         <div className="projection-grid">
           {projections.map((projection) => {
             const date = projection.date
-            const progress = Math.min(100, projection.balanceBefore / 30000 * 100)
+            const progress = Math.min(
+              100,
+              projection.balanceBefore / 30000 * 100,
+            )
 
             return (
               <article className="projection-card" key={makeKey(date)}>
@@ -671,14 +892,24 @@ function App() {
 
                 <div className="projection-balance-block">
                   <p className="projection-caption">SALDO ANTES DEL RETIRO</p>
-                  <strong className="projection-amount">{money(projection.balanceBefore)}</strong>
+                  <strong className="projection-amount">
+                    {money(projection.balanceBefore)}
+                  </strong>
                 </div>
 
                 <div className="projection-progress-header">
                   <span>Progreso hacia S/ 30,000</span>
                   <strong>{progress.toFixed(1)}%</strong>
                 </div>
-                <div className="chart-track" role="progressbar" aria-label="Progreso hacia la meta de treinta mil soles" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+
+                <div
+                  className="chart-track"
+                  role="progressbar"
+                  aria-label="Progreso hacia la meta de treinta mil soles"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={progress}
+                >
                   <div className="chart-fill" style={{ width: `${progress}%` }} />
                 </div>
 
@@ -703,14 +934,22 @@ function App() {
                 </div>
 
                 <div className="projection-stats">
-                  <div><span>Días planificados</span><strong>{projection.workdays}</strong></div>
-                  <div><span>Ganancia diaria</span><strong>{money(earning)}</strong></div>
+                  <div>
+                    <span>Días planificados</span>
+                    <strong>{projection.workdays}</strong>
+                  </div>
+                  <div>
+                    <span>Ganancia diaria</span>
+                    <strong>{money(earning)}</strong>
+                  </div>
                 </div>
 
                 {conservative && (
                   <div className="reserve-note">
                     <span className="reserve-note-icon">✓</span>
-                    <span>Escenario conservador activo. Se descuentan jornadas reservadas.</span>
+                    <span>
+                      Escenario conservador activo. Se descuentan jornadas reservadas.
+                    </span>
                   </div>
                 )}
 
@@ -718,15 +957,26 @@ function App() {
                   <h4>Metas de retiro</h4>
                   {withdrawalOptions.map((amount) => {
                     const canWithdraw = projection.balanceBefore >= amount
-                    const difference = Math.max(0, amount - projection.balanceBefore)
+                    const difference = Math.max(
+                      0,
+                      amount - projection.balanceBefore,
+                    )
 
                     return (
                       <div className="withdrawal-option" key={amount}>
                         <div className="option-amount">
                           <span>{money(amount)}</span>
-                          <small>{canWithdraw ? 'Saldo suficiente' : `Faltan ${money(difference)}`}</small>
+                          <small>
+                            {canWithdraw
+                              ? 'Saldo suficiente'
+                              : `Faltan ${money(difference)}`}
+                          </small>
                         </div>
-                        <span className={`option-status ${canWithdraw ? 'available' : 'unavailable'}`}>
+                        <span
+                          className={`option-status ${
+                            canWithdraw ? 'available' : 'unavailable'
+                          }`}
+                        >
                           {canWithdraw ? 'Alcanzado' : 'Pendiente'}
                         </span>
                       </div>
@@ -737,7 +987,8 @@ function App() {
                 <div className="wait-recommendation">
                   <strong>¿Conviene esperar una semana?</strong>
                   <p>
-                    En 7 días, el saldo simulado sería {money(projection.balanceAfterExtraWeek)}.
+                    En 7 días, el saldo simulado sería{' '}
+                    {money(projection.balanceAfterExtraWeek)}.
                     {projection.nextGoal
                       ? ` Podrías alcanzar la meta de ${money(projection.nextGoal)} si esperas, según tus días planificados.`
                       : ' Con los días seleccionados, esperar una semana no alcanza una meta superior de la lista.'}
@@ -781,7 +1032,13 @@ function App() {
               <strong>Calculadora</strong>
               <small>Independiente de tu saldo</small>
             </div>
-            <button type="button" onClick={() => setCalculatorOpen(false)} aria-label="Cerrar calculadora">×</button>
+            <button
+              type="button"
+              onClick={() => setCalculatorOpen(false)}
+              aria-label="Cerrar calculadora"
+            >
+              ×
+            </button>
           </div>
 
           <div className="calculator-display" aria-live="polite">
@@ -791,7 +1048,13 @@ function App() {
           <div className="calculator-keys">
             {[
               { label: 'C', action: calculatorClear, kind: 'utility' },
-              { label: '⌫', action: () => setCalcDisplay((value) => value.length > 1 ? value.slice(0, -1) : '0'), kind: 'utility' },
+              {
+                label: '⌫',
+                action: () => setCalcDisplay((value) =>
+                  value.length > 1 ? value.slice(0, -1) : '0',
+                ),
+                kind: 'utility',
+              },
               { label: '%', action: calculatorPercent, kind: 'utility' },
               { label: '÷', action: () => calculatorOperator('÷'), kind: 'operator' },
               { label: '7', action: () => calculatorInput('7'), kind: '' },
@@ -806,7 +1069,11 @@ function App() {
               { label: '2', action: () => calculatorInput('2'), kind: '' },
               { label: '3', action: () => calculatorInput('3'), kind: '' },
               { label: '+', action: () => calculatorOperator('+'), kind: 'operator' },
-              { label: '±', action: () => setCalcDisplay((value) => String(Number(value) * -1)), kind: 'utility' },
+              {
+                label: '±',
+                action: () => setCalcDisplay((value) => String(Number(value) * -1)),
+                kind: 'utility',
+              },
               { label: '0', action: () => calculatorInput('0'), kind: '' },
               { label: '.', action: () => calculatorInput('.'), kind: '' },
               { label: '=', action: calculatorEquals, kind: 'equals' },
