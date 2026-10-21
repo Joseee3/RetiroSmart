@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import './App.css'
 
@@ -10,6 +9,21 @@ const monthNames = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+type Page = 'home' | 'projections' | 'holidays' | 'help'
+
+const navItems: { page: Page; icon: string; title: string; hint: string }[] = [
+  { page: 'home', icon: '⌂', title: 'Inicio', hint: 'Resumen y calendario' },
+  { page: 'projections', icon: '↗', title: 'Proyecciones', hint: 'Próximos retiros y metas' },
+  { page: 'holidays', icon: '▣', title: 'Feriados', hint: 'Fechas especiales' },
+  { page: 'help', icon: '?', title: 'Ayuda', hint: 'Cómo usar la aplicación' },
+]
+
+const pageTitles: Record<Exclude<Page, 'home'>, [string, string]> = {
+  projections: ['Tus proyecciones', 'Compara tus próximos retiros y el saldo que quedaría.'],
+  holidays: ['Feriados', 'Consulta y administra las fechas que no cuentan como jornadas de trabajo.'],
+  help: ['Centro de ayuda', 'Guía rápida para planificar tus retiros.'],
+}
 
 type Holiday = {
   date: string
@@ -168,13 +182,15 @@ function App() {
   const [year, setYear] = useState(today.getFullYear())
   const [selectedDays, setSelectedDays] = useState<string[]>([])
   const [initialBalance, setInitialBalance] = useState('')
-  const [dailyEarning, setDailyEarning] = useState('80')
+  const [dailyEarning, setDailyEarning] = useState('')
   const [conservative, setConservative] = useState(false)
 
   const [holidayName, setHolidayName] = useState('')
   const [holidayDate, setHolidayDate] = useState('')
   const [showHolidayForm, setShowHolidayForm] = useState(false)
 
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [activePage, setActivePage] = useState<Page>('home')
   const [calculatorOpen, setCalculatorOpen] = useState(false)
   const [calcDisplay, setCalcDisplay] = useState('0')
   const [calcStored, setCalcStored] = useState<number | null>(null)
@@ -378,6 +394,12 @@ function App() {
     })
   }
 
+  function goToPage(page: Page) {
+    setActivePage(page)
+    setDrawerOpen(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function calculatorInput(value: string) {
     if (calcNewNumber || calcDisplay === '0' || calcDisplay === 'Error') {
       setCalcDisplay(value === '.' ? '0.' : value)
@@ -448,7 +470,7 @@ function App() {
   const nextProjection = projections[0]
 
   return (
-    <main className="app">
+    <main className={`app page-${activePage}`}>
       <header className="topbar">
         <a className="brand" href="#">
           <span className="brand-icon">R</span>
@@ -457,22 +479,83 @@ function App() {
           </span>
         </a>
 
-        <span className="today-label">
-          {today.toLocaleDateString('es-PE', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-          })}
-        </span>
+        <div className="topbar-actions">
+          <span className="today-label">
+            {today.toLocaleDateString('es-PE', {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+            })}
+          </span>
+          <button
+            className="menu-button"
+            type="button"
+            aria-label={drawerOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={drawerOpen}
+            onClick={() => setDrawerOpen((open) => !open)}
+          >
+            <span aria-hidden="true">{drawerOpen ? '×' : '☰'}</span>
+            <span className="menu-button-label">Menú</span>
+          </button>
+        </div>
       </header>
 
-      <section className="welcome">
+      {drawerOpen && (
+        <div className="drawer-backdrop" onClick={() => setDrawerOpen(false)}>
+          <nav
+            className="app-drawer"
+            aria-label="Navegación principal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="drawer-heading">
+              <div>
+                <strong>RetiroSmart</strong>
+                <small>Menú principal</small>
+              </div>
+              <button
+                type="button"
+                className="drawer-close"
+                aria-label="Cerrar menú"
+                onClick={() => setDrawerOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            {navItems.map((item) => (
+              <button
+                key={item.page}
+                type="button"
+                className={`drawer-link ${activePage === item.page ? 'active' : ''}`}
+                onClick={() => goToPage(item.page)}
+              >
+                <span aria-hidden="true">{item.icon}</span>
+                <span>
+                  <strong>{item.title}</strong>
+                  <small>{item.hint}</small>
+                </span>
+              </button>
+            ))}
+
+            <p className="drawer-note">Tus cálculos se basan en los datos que ingresas. Son estimaciones, no retiros reales.</p>
+          </nav>
+        </div>
+      )}
+
+      {activePage !== 'home' && (
+        <section className="page-heading">
+          <p className="eyebrow">RETIROSMART</p>
+          <h1>{pageTitles[activePage][0]}</h1>
+          <p>{pageTitles[activePage][1]}</p>
+        </section>
+      )}
+
+      <section className="welcome" id="inicio">
         <div className="welcome-content">
           <p className="eyebrow">TU PLANIFICADOR FINANCIERO</p>
-          <h1>Planifica tus próximos retiros</h1>
+          <h1>Tu dinero, más claro</h1>
           <p className="subtitle">
-            Organiza tus jornadas, contempla imprevistos y conoce
-            cuánto podrías retirar en tus próximas fechas.
+            Configura tu saldo, organiza tus jornadas y revisa cuánto podrías retirar.
           </p>
         </div>
         <div className="welcome-icon" aria-hidden="true">↗</div>
@@ -480,34 +563,50 @@ function App() {
 
       <section className="finance-layout">
         <article className="finance-panel">
-          <p className="eyebrow">CONFIGURACIÓN FINANCIERA</p>
-          <h2>Tu saldo y tus ganancias</h2>
+          <div className="finance-panel-head">
+            <span className="finance-panel-icon" aria-hidden="true">S/</span>
+            <div>
+              <p className="eyebrow">TU PUNTO DE PARTIDA</p>
+              <h2>Tu saldo y tus ganancias</h2>
+            </div>
+          </div>
           <p className="subtitle">
-            Introduce tu saldo actual para calcular tus proyecciones.
+            Completa estos dos datos y tu proyección se calcula sola.
           </p>
 
           <div className="finance-fields">
             <label>
-              Saldo actual (S/)
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Ej. 900.00"
-                value={initialBalance}
-                onChange={(event) => setInitialBalance(event.target.value)}
-              />
+              <span className="field-label">Saldo actual</span>
+              <span className="money-input">
+                <span className="money-prefix">S/</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={initialBalance}
+                  onChange={(event) => setInitialBalance(event.target.value)}
+                />
+              </span>
+              <small className="field-hint">Lo que tienes hoy disponible.</small>
             </label>
 
             <label>
-              Ganancia diaria (S/)
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={dailyEarning}
-                onChange={(event) => setDailyEarning(event.target.value)}
-              />
+              <span className="field-label">Ganancia diaria</span>
+              <span className="money-input">
+                <span className="money-prefix">S/</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={dailyEarning}
+                  onChange={(event) => setDailyEarning(event.target.value)}
+                />
+              </span>
+              <small className="field-hint">Lo que ganas en un día de trabajo.</small>
             </label>
           </div>
 
@@ -518,13 +617,17 @@ function App() {
               checked={conservative}
               onChange={(event) => setConservative(event.target.checked)}
             />
-            <span className="conservative-radio" aria-hidden="true" />
             <span className="toggle-copy">
-              <strong>Escenario conservador</strong>
+              <strong>Calcular con un día de descanso por semana</strong>
               <small>
-                Reservar una jornada por cada semana con días seleccionados.
+                {conservative
+                  ? generalReservedDays > 0
+                    ? `Activado: se descuentan ${generalReservedDays} de tus ${eligibleDays.length} días marcados.`
+                    : 'Activado: marca días en el calendario y verás cuántos se descuentan.'
+                  : 'Si lo activas, se cuenta un día menos de trabajo por cada semana que marques. Ej.: marcas 5 días y se calculan 4. Así tu proyección es más realista.'}
               </small>
             </span>
+            <span className="conservative-radio" aria-hidden="true" />
           </label>
         </article>
 
@@ -548,7 +651,7 @@ function App() {
               <strong>{eligibleDays.length}</strong>
             </div>
             <div>
-              <span>Días de reserva</span>
+              <span>Días descontados</span>
               <strong>{generalReservedDays}</strong>
             </div>
           </div>
@@ -668,6 +771,28 @@ function App() {
           </div>
         </div>
 
+                  <div className="monthly-holidays">
+            <div className="monthly-holidays-icon">!</div>
+
+            <div className="monthly-holidays-copy">
+              <strong>Feriados de este mes</strong>
+
+              <small>
+                {monthHolidays.length === 0
+                  ? 'No hay feriados registrados este mes.'
+                  : monthHolidays.map((holiday) => holiday.name).join(', ')}
+              </small>
+            </div>
+
+            <span className="monthly-holidays-count">
+              {monthHolidays.length}
+            </span>
+          </div>
+
+          <div className="calendar-grid">
+            
+          </div>
+
         <div className="calendar-grid">
           {weekDays.map((day) => (
             <div className="weekday" key={day}>{day}</div>
@@ -687,13 +812,13 @@ function App() {
             const isPast = key < todayKey
 
             const classes = [
-              'day-button',
-              isSelected ? 'selected' : '',
-              isToday ? 'today' : '',
-              isWithdrawal ? 'withdrawal' : '',
-              holiday ? 'holiday' : '',
-              isPast ? 'past-day' : '',
-            ].filter(Boolean).join(' ')
+                'day-button',
+                isSelected ? 'selected' : '',
+                isToday ? 'today' : '',
+                isWithdrawal ? 'withdrawal' : '',
+                holiday ? 'holiday' : '',
+                isPast && !isToday ? 'past-day' : '',
+              ].filter(Boolean).join(' ')
 
             return (
               <button
@@ -718,6 +843,10 @@ function App() {
                 aria-pressed={isSelected}
               >
                 <span>{day}</span>
+
+                {isToday && (
+                  <span className="today-label">HOY</span>
+                )}
                 {holiday && <span className="holiday-mark">F</span>}
                 {!holiday && isWithdrawal && <span className="withdrawal-dot" />}
                 {isSelected && <span className="selected-dot" />}
@@ -751,7 +880,7 @@ function App() {
         </div>
       </section>
 
-      <section className="holiday-layout">
+      <section className="holiday-layout" id="feriados">
         <article className="calendar-card holiday-list-card">
           <div className="holiday-heading">
             <div>
@@ -857,7 +986,7 @@ function App() {
         </article>
       </section>
 
-      <section className="projections-section">
+      <section className="projections-section" id="proyecciones">
         <div className="projections-heading">
           <div>
             <p className="eyebrow">TUS PRÓXIMAS METAS</p>
@@ -948,7 +1077,7 @@ function App() {
                   <div className="reserve-note">
                     <span className="reserve-note-icon">✓</span>
                     <span>
-                      Escenario conservador activo. Se descuentan jornadas reservadas.
+                      Calculado con un día de descanso por semana. Se descuentan jornadas.
                     </span>
                   </div>
                 )}
@@ -1008,6 +1137,20 @@ function App() {
             La recomendación de esperar una semana solo considera las jornadas
             que ya seleccionaste. Verifica las condiciones de tu plataforma.
           </p>
+        </div>
+      </section>
+
+      <section className="help-card" id="ayuda">
+        <div className="help-card-icon" aria-hidden="true">?</div>
+        <div>
+          <p className="eyebrow">AYUDA</p>
+          <h2>¿Cómo usar RetiroSmart?</h2>
+          <ol>
+            <li>Ingresa tu saldo actual y la ganancia diaria estimada.</li>
+            <li>Selecciona en el calendario los días en los que planeas trabajar.</li>
+            <li>Revisa el saldo proyectado y compara las metas de retiro disponibles.</li>
+          </ol>
+          <p>Las cifras son simulaciones basadas en la información ingresada; no representan ganancias garantizadas ni realizan retiros reales.</p>
         </div>
       </section>
 
