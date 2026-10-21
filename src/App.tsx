@@ -247,20 +247,6 @@ function App() {
     return Math.max(0, keys.length - reserved)
   }
 
-  function balanceAt(target: Date, baseBalance: number) {
-    const targetKey = makeKey(target)
-    const workdays = eligibleDays.filter((key) => key <= targetKey)
-    return {
-      workdays: workdays.length,
-      reservedDays: conservative
-        ? Math.min(workdays.length, countReservedDays(workdays))
-        : 0,
-      effectiveDays: countEffectiveDays(workdays),
-      balance: baseBalance + earning * countEffectiveDays(workdays),
-    }
-  }
-
-  // La simulación elige la meta más alta alcanzable y la descuenta.
   // Las ganancias entre fechas de retiro se suman al saldo restante.
   const projections = useMemo(() => {
     const result: Projection[] = []
